@@ -4,7 +4,7 @@ A modern React-based 3D visualization application for VTK and VTU files using vt
 
 ## Features
 
-- 📊 **Basic VTK Viewer**: Simple VTK file rendering with camera controls
+- 📊 **Basic VTK Viewer**: Simple VTK file rendering with camera controls and basic appearance settings
 - 🚀 **Advanced ParaView Dashboard**: Professional scientific visualization with:
   - VTU file support with proper mesh connectivity
   - Scientific color mapping (Viridis, Plasma, Cool-to-Warm, etc.)
@@ -40,9 +40,8 @@ Upload your .vtk or .vtu files using the file upload button in either viewer.
 src/
 ├── components/           # React components
 │   ├── VtkViewer.jsx    # Basic VTK viewer
-│   ├── ParaViewWebDashboard.jsx  # Advanced dashboard
+│   ├── ParaViewWebDashboard.jsx  # Advanced dashboard with data visualization
 │   ├── VtkRenderer.jsx  # Core VTK rendering logic
-│   ├── DataVisualizationControls.jsx  # Color mapping controls
 │   └── SlicingControls.jsx  # Geometry slicing controls
 ├── utils/               # Utility functions
 │   ├── vtkUtils.js      # VTK file loading utilities

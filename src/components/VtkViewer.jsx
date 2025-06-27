@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import VtkRenderer from './VtkRenderer';
 import SlicingControls from './SlicingControls';
-import DataVisualizationControls from './DataVisualizationControls';
 
 const VtkViewer = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -27,12 +26,7 @@ const VtkViewer = () => {
     z: { enabled: false, min: -100, max: 100 }
   });
 
-  // Data visualization controls
-  const [availableDataArrays, setAvailableDataArrays] = useState([]);
-  const [selectedDataArray, setSelectedDataArray] = useState('');
-  const [colorMapName, setColorMapName] = useState('viridis');
-  const [contourEnabled, setContourEnabled] = useState(false);
-  const [numContours, setNumContours] = useState(5);
+
 
   // Color conversion helpers
   const rgbToHex = (rgb) => {
@@ -81,20 +75,7 @@ const VtkViewer = () => {
       });
     }
 
-    // Update available data arrays for visualization
-    if (newStats.dataArrays) {
-      setAvailableDataArrays(newStats.dataArrays);
-      console.log('🎨 Available data arrays for visualization:', newStats.dataArrays);
-      
-      // Auto-select first array if available
-      if (newStats.dataArrays.length > 0 && !selectedDataArray) {
-        setSelectedDataArray(newStats.dataArrays[0].name);
-        console.log('🎯 Auto-selected data array:', newStats.dataArrays[0].name);
-      }
-    } else {
-      setAvailableDataArrays([]);
-      setSelectedDataArray('');
-    }
+
   };
 
   const resetCamera = () => {
@@ -184,10 +165,7 @@ const VtkViewer = () => {
       setIsLoading(true);
       setError(null);
       
-      // Reset data visualization state
-      setAvailableDataArrays([]);
-      setSelectedDataArray('');
-      setContourEnabled(false);
+
 
       let file = null;
       let fileName = '';
@@ -352,40 +330,20 @@ const VtkViewer = () => {
             />
           )}
 
-          {/* Data Visualization Controls */}
-          {!isLoading && !error && (
-            <div className="mt-6">
-              <DataVisualizationControls
-                availableArrays={availableDataArrays}
-                selectedDataArray={selectedDataArray}
-                onDataArrayChange={setSelectedDataArray}
-                colorMapName={colorMapName}
-                onColorMapChange={setColorMapName}
-                contourEnabled={contourEnabled}
-                onContourToggle={setContourEnabled}
-                numContours={numContours}
-                onNumContoursChange={setNumContours}
-                onFileUpload={handleFileUpload}
-              />
-            </div>
-          )}
+
         </div>
       </div>
 
       {/* Main 3D View */}
       <div className="flex-1 relative">
         <VtkRenderer
-          key={`${currentFile}-${selectedDataArray}-${colorMapName}`} // Force re-render when file or visualization changes
+          key={currentFile} // Force re-render when file changes
           backgroundColor={backgroundColor}
           objectColor={objectColor}
           opacity={opacity}
           wireframeMode={wireframeMode}
           pointSize={2}
           sliceConfig={sliceConfig}
-          selectedDataArray={selectedDataArray}
-          colorMapName={colorMapName}
-          contourEnabled={contourEnabled}
-          numContours={numContours}
           onStatsUpdate={handleStatsUpdate}
           onError={setError}
           onLoadingChange={setIsLoading}
