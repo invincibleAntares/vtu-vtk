@@ -1,12 +1,58 @@
-# React + Vite
+# 🎯 VTK Visualization Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern React-based 3D visualization application for VTK and VTU files using vtk.js.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- 📊 **Basic VTK Viewer**: Simple VTK file rendering with camera controls
+- 🚀 **Advanced ParaView Dashboard**: Professional scientific visualization with:
+  - VTU file support with proper mesh connectivity
+  - Scientific color mapping (Viridis, Plasma, Cool-to-Warm, etc.)
+  - Data array visualization
+  - Slicing and clipping controls
+  - Point probing with Ctrl/Shift+click
+  - File upload support for .vtk and .vtu files
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Start development server:
+```bash
+npm run dev
+```
+
+3. Open http://localhost:5173 in your browser
+
+## Usage
+
+- **Basic Viewer** (`/`): Simple VTK file rendering
+- **Advanced ParaView** (`/paraview`): Full featured scientific visualization
+
+Upload your .vtk or .vtu files using the file upload button in either viewer.
+
+## Project Structure
+
+```
+src/
+├── components/           # React components
+│   ├── VtkViewer.jsx    # Basic VTK viewer
+│   ├── ParaViewWebDashboard.jsx  # Advanced dashboard
+│   ├── VtkRenderer.jsx  # Core VTK rendering logic
+│   ├── DataVisualizationControls.jsx  # Color mapping controls
+│   └── SlicingControls.jsx  # Geometry slicing controls
+├── utils/               # Utility functions
+│   ├── vtkUtils.js      # VTK file loading utilities
+│   └── vtuParser.js     # VTU file parser
+└── main.jsx            # Application entry point
+```
+
+## Technologies
+
+- React 18 + Vite
+- vtk.js for 3D visualization
+- TailwindCSS for styling
+- React Router for navigation
