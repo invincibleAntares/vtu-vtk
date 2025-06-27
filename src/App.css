@@ -1,0 +1,72 @@
+/* App-specific styles */
+.App {
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Ensure VTK containers work properly */
+.vtk-container {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Fix for VTK.js render window */
+.vtk-container canvas {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Loading spinner animation */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Pulse animation for status indicators */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Smooth transitions for UI elements */
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+/* Panel shadow effects */
+.shadow-xl {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Backdrop blur for overlays */
+.backdrop-blur-sm {
+  backdrop-filter: blur(4px);
+}
+
+/* Ensure proper z-index stacking */
+.z-10 {
+  z-index: 10;
+}
+
+.z-50 {
+  z-index: 50;
+}
