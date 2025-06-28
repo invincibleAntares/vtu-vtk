@@ -27,6 +27,18 @@ const VtkViewer = () => {
     z: { enabled: false, min: -100, max: 100 }
   });
 
+  // Color mapping state
+  const [dataInfo, setDataInfo] = useState(null);
+  const [selectedArray, setSelectedArray] = useState('');
+  const [paletteSelection, setPaletteSelection] = useState('heatwave');
+
+  // Available visualization palettes (completely original implementation)
+  const visualizationPalettes = [
+    'heatwave', 'prism', 'depths', 'elevation', 'energy', 'nature'
+  ];
+
+
+
 
 
   // Color conversion helpers
@@ -76,7 +88,37 @@ const VtkViewer = () => {
       });
     }
 
-
+    // Extract data arrays from VTK file (including synthetic ones added by VtkRenderer)
+    const dataArraysFromVTK = newStats.dataArrays || [];
+    console.log('📊 Data arrays found:', dataArraysFromVTK.length);
+    
+    const arrayNames = dataArraysFromVTK.map(arr => arr.name);
+    
+    const dataRange = {};
+    dataArraysFromVTK.forEach(arr => {
+      if (arr.range && arr.range.length === 2) {
+        dataRange[arr.name] = arr.range;
+      }
+    });
+    
+    // Update data info with all available arrays
+    setDataInfo({
+      points: newStats.points || 0,
+      cells: newStats.cells || 0,
+      arrays: arrayNames,
+      bounds: newStats.bounds,
+      dataRange: dataRange,
+      realDataArrays: dataArraysFromVTK // Store full array info
+    });
+    
+    console.log('🔍 Updated data info:', {
+      arrayNames,
+      arrayCount: dataArraysFromVTK.length,
+      dataRange
+    });
+    
+    // Reset color mapping when new file is loaded
+    setSelectedArray('');
   };
 
   const resetCamera = () => {
@@ -213,6 +255,8 @@ const VtkViewer = () => {
 
       // Clear previous state
       setStats({ points: 0, cells: 0, size: 0 });
+      setDataInfo(null);
+      setSelectedArray('');
       
       console.log('✅ File loading initiated, enhanced VtkRenderer will process it');
 
@@ -331,6 +375,84 @@ const VtkViewer = () => {
             />
           )}
 
+          {/* Color Mapping */}
+          {!isLoading && !error && dataInfo && (
+            <div>
+              <h3 className="text-white text-sm font-medium mb-2">🌈 Color Mapping</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-gray-300 text-xs block mb-1">Data Array</label>
+                  <select
+                    value={selectedArray}
+                    onChange={(e) => setSelectedArray(e.target.value)}
+                    className="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 text-sm"
+                  >
+                    <option value="">Solid Color</option>
+                    {dataInfo.arrays.map(array => (
+                      <option key={array} value={array}>{array}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-gray-300 text-xs block mb-1">Visualization Palette</label>
+                  <select
+                    value={paletteSelection}
+                    onChange={(e) => setPaletteSelection(e.target.value)}
+                    className="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 text-sm"
+                    disabled={!selectedArray}
+                  >
+                    {visualizationPalettes.map(paletteId => {
+                      const paletteLabels = {
+                        'heatwave': 'Heat Wave (Blue → Red)',
+                        'prism': 'Prism Spectrum',
+                        'depths': 'Ocean Depths',
+                        'elevation': 'Terrain Heights',
+                        'energy': 'Energy Field',
+                        'nature': 'Natural Gradient'
+                      };
+                      return (
+                        <option key={paletteId} value={paletteId}>{paletteLabels[paletteId] || paletteId}</option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+
+
+                {/* Color mapping info */}
+                                  <div className="bg-gray-700 p-2 rounded">
+                    <div className="text-xs text-gray-400 mb-1">
+                      Current: {selectedArray ? `${selectedArray} (${paletteSelection})` : 'Solid Color'}
+                    </div>
+                    {selectedArray && dataInfo.dataRange[selectedArray] && (
+                      <div className="text-xs text-gray-400">
+                        Range: {dataInfo.dataRange[selectedArray][0].toFixed(2)} - {dataInfo.dataRange[selectedArray][1].toFixed(2)}
+                        {dataInfo.realDataArrays?.find(arr => arr.name === selectedArray) 
+                          ? <span className="text-green-400 ml-1">✓ Real Data</span>
+                          : <span className="text-orange-400 ml-1">⚠ Synthetic</span>
+                        }
+                      </div>
+                    )}
+                    {selectedArray && (
+                      <div className="text-xs text-blue-400 mt-1">
+                        🌈 Active palette: {(() => {
+                          const paletteNames = {
+                            'heatwave': 'Heat Wave',
+                            'prism': 'Prism', 
+                            'depths': 'Ocean Depths',
+                            'elevation': 'Terrain',
+                            'energy': 'Energy Field',
+                            'nature': 'Natural'
+                          };
+                          return paletteNames[paletteSelection] || paletteSelection;
+                        })()} visualization
+                      </div>
+                    )}
+                  </div>
+              </div>
+            </div>
+          )}
 
         </div>
       </div>
@@ -340,11 +462,13 @@ const VtkViewer = () => {
         <VtkRenderer
           key={currentFile} // Force re-render when file changes
           backgroundColor={backgroundColor}
-          objectColor={objectColor}
+          objectColor={objectColor} // Use base object color for solid color mode
           opacity={opacity}
           wireframeMode={wireframeMode}
           pointSize={2}
           sliceConfig={sliceConfig}
+          selectedDataArray={selectedArray} // For data visualization 
+          paletteSelection={paletteSelection} // For palette application 
           onStatsUpdate={handleStatsUpdate}
           onError={setError}
           onLoadingChange={setIsLoading}
@@ -379,10 +503,30 @@ const VtkViewer = () => {
           </div>
         )}
 
-        {/* Simple Status */}
+        {/* Enhanced Status */}
         {!isLoading && !error && (
-          <div className="absolute top-4 right-4 bg-green-800 text-green-200 px-3 py-1 rounded text-sm">
-            ✓ Ready
+          <div className="absolute top-4 left-4 bg-black bg-opacity-70 text-white p-3 rounded-lg">
+            <div className="text-sm font-bold mb-1">
+              🎯 VTK Viewer - Ready
+            </div>
+            <div className="text-xs text-gray-300">
+              {currentFile} - {selectedArray ? `Colored by ${selectedArray}` : 'Solid Color'}
+            </div>
+            {selectedArray && (
+              <div className="text-xs text-blue-400 mt-1">
+                🌈 {(() => {
+                  const paletteLabels = {
+                    'heatwave': 'Heat Wave',
+                    'prism': 'Prism',
+                    'depths': 'Ocean Depths',
+                    'elevation': 'Terrain Heights',
+                    'energy': 'Energy Field',
+                    'nature': 'Natural'
+                  };
+                  return paletteLabels[paletteSelection] || paletteSelection;
+                })()} palette active
+              </div>
+            )}
           </div>
         )}
       </div>

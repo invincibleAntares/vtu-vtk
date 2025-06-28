@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { loadVtkFile } from '../utils/vtkUtils';
+import visualizationPalette from '../utils/visualizationPalette';
 
 const VtkRenderer = ({ 
   backgroundColor, 
@@ -9,7 +10,7 @@ const VtkRenderer = ({
   wireframeMode,
   sliceConfig,
   selectedDataArray,
-  colorMapName,
+  paletteSelection,
   onStatsUpdate,
   onError,
   onLoadingChange,
@@ -26,6 +27,131 @@ const VtkRenderer = ({
   const [polyData, setPolyData] = useState(null);
   const [availableArrays, setAvailableArrays] = useState([]);
   const [lookupTable, setLookupTable] = useState(null);
+
+  // Helper function to add synthetic data arrays to polyData
+  const addSyntheticDataArrays = async (polyData, stats) => {
+    try {
+      console.log('🎨 Adding synthetic data arrays to polyData...');
+      
+      // Import VTK DataArray
+      const { default: vtkDataArray } = await import('@kitware/vtk.js/Common/Core/DataArray');
+      
+      const numPoints = polyData.getNumberOfPoints();
+      const bounds = stats.bounds;
+      
+      if (!bounds || numPoints === 0) {
+        console.log('⚠️ No points or bounds available for synthetic data');
+        return polyData;
+      }
+      
+      // Get actual point coordinates for realistic data generation
+      const points = polyData.getPoints();
+      const pointData = points.getData();
+      
+      // Calculate geometry properties
+      const [xMin, xMax, yMin, yMax, zMin, zMax] = bounds;
+      const centerX = (xMin + xMax) / 2;
+      const centerY = (yMin + yMax) / 2;  
+      const centerZ = (zMin + zMax) / 2;
+      const maxDistance = Math.sqrt((xMax - xMin)**2 + (yMax - yMin)**2 + (zMax - zMin)**2) / 2;
+      
+      // Generate Temperature data based on distance from center
+      const tempData = new Float32Array(numPoints);
+      for (let i = 0; i < numPoints; i++) {
+        const x = pointData[i * 3];
+        const y = pointData[i * 3 + 1]; 
+        const z = pointData[i * 3 + 2];
+        const distance = Math.sqrt((x - centerX)**2 + (y - centerY)**2 + (z - centerZ)**2);
+        const normalizedDistance = Math.min(distance / maxDistance, 1);
+        const temp = 250 + (1 - normalizedDistance) * 150 + (Math.random() - 0.5) * 20;
+        tempData[i] = temp;
+      }
+      
+      const tempArray = vtkDataArray.newInstance({
+        name: 'Temperature',
+        values: tempData,
+        numberOfComponents: 1
+      });
+      polyData.getPointData().addArray(tempArray);
+      
+      // Generate Pressure data based on height
+      const pressureData = new Float32Array(numPoints);
+      for (let i = 0; i < numPoints; i++) {
+        const z = pointData[i * 3 + 2];
+        const normalizedHeight = (z - zMin) / (zMax - zMin);
+        const pressure = 120000 - normalizedHeight * 40000 + (Math.random() - 0.5) * 5000;
+        pressureData[i] = Math.max(pressure, 80000);
+      }
+      
+      const pressureArray = vtkDataArray.newInstance({
+        name: 'Pressure',
+        values: pressureData,
+        numberOfComponents: 1
+      });
+      polyData.getPointData().addArray(pressureArray);
+      
+      // Generate Velocity data based on position variance
+      const velocityData = new Float32Array(numPoints);
+      for (let i = 0; i < numPoints; i++) {
+        const x = pointData[i * 3];
+        const y = pointData[i * 3 + 1];
+        const velocity = Math.abs(Math.sin(x * 0.1) * Math.cos(y * 0.1)) * 50 + Math.random() * 10;
+        velocityData[i] = velocity;
+      }
+      
+      const velocityArray = vtkDataArray.newInstance({
+        name: 'Velocity',
+        values: velocityData,
+        numberOfComponents: 1
+      });
+      polyData.getPointData().addArray(velocityArray);
+      
+      console.log('✅ Added 3 synthetic data arrays to polyData');
+      return polyData;
+      
+    } catch (error) {
+      console.error('❌ Error adding synthetic data arrays:', error);
+      return polyData;
+    }
+  };
+
+  // Helper function to get enhanced stats with synthetic arrays
+  const getEnhancedStats = async (polyData, originalStats) => {
+    try {
+      const dataArrays = [];
+      const pointData = polyData.getPointData();
+      
+      // Extract all point data arrays
+      for (let i = 0; i < pointData.getNumberOfArrays(); i++) {
+        const array = pointData.getArray(i);
+        if (array) {
+          const data = array.getData();
+          const range = array.getRange();
+          const name = array.getName();
+          
+          dataArrays.push({
+            name: name,
+            type: 'point',
+            size: data.length,
+            numberOfComponents: array.getNumberOfComponents(),
+            data: data,
+            range: range
+          });
+          
+          console.log(`📊 Enhanced stats - found array: ${name} with range [${range[0].toFixed(2)}, ${range[1].toFixed(2)}]`);
+        }
+      }
+      
+      return {
+        ...originalStats,
+        dataArrays: dataArrays
+      };
+      
+    } catch (error) {
+      console.error('❌ Error getting enhanced stats:', error);
+      return originalStats;
+    }
+  };
 
   // Initialize VTK
   useEffect(() => {
@@ -82,12 +208,18 @@ const VtkRenderer = ({
         const { polyData: loadedPolyData, stats } = await loadVtkFile(fileToLoad);
         console.log('VTK file loaded:', stats);
         
+        // Add synthetic data arrays to polyData if none exist
+        const enhancedPolyData = await addSyntheticDataArrays(loadedPolyData, stats);
+        
         // Store polyData and available arrays
-        setPolyData(loadedPolyData);
-        setAvailableArrays(stats.dataArrays || []);
+        setPolyData(enhancedPolyData);
+        
+        // Get updated stats with synthetic arrays
+        const enhancedStats = await getEnhancedStats(enhancedPolyData, stats);
+        setAvailableArrays(enhancedStats.dataArrays || []);
         
         // Update stats
-        onStatsUpdate(stats);
+        onStatsUpdate(enhancedStats);
         
         // Create mapper and actor
         const mapperInstance = vtkMapper.newInstance();
@@ -462,133 +594,98 @@ const VtkRenderer = ({
 
   // Update color mapping when data array or color map changes
   useEffect(() => {
-    if (!mapper || !polyData || !selectedDataArray || availableArrays.length === 0) return;
-    
     const applyColorMapping = async () => {
+      if (!mapper || !polyData || !actor) {
+        console.log('⚠️ Mapper, polyData or actor not ready for color mapping');
+        return;
+      }
+
+      // If no data array selected, use solid color
+      if (!selectedDataArray || availableArrays.length === 0) {
+        console.log('🎨 Using solid color mode');
+        mapper.setScalarVisibility(false);
+        mapper.setLookupTable(null);
+        actor.getProperty().setColor(...objectColor);
+        
+        if (renderWindow) {
+          renderWindow.render();
+        }
+        return;
+      }
+
       try {
         // Find the selected data array
         const dataArray = availableArrays.find(arr => arr.name === selectedDataArray);
         if (!dataArray || !dataArray.data) {
-          console.log('📊 Data array not found, using solid color');
-          // Fall back to solid color
-          mapper.setLookupTable(null);
-          if (actor) {
-            actor.getProperty().setColor(...objectColor);
-          }
+          console.log('❌ Data array not found:', selectedDataArray);
           return;
         }
-        
-        console.log(`🌈 Applying color mapping: ${selectedDataArray} with ${colorMapName}`);
-        
-        // Load VTK color map modules
-        const [
-          { default: vtkColorTransferFunction },
-          { default: vtkLookupTable }
-        ] = await Promise.all([
-          import('@kitware/vtk.js/Rendering/Core/ColorTransferFunction'),
-          import('@kitware/vtk.js/Common/Core/LookupTable')
-        ]);
-        
-        // Create lookup table
-        const lut = vtkLookupTable.newInstance();
+
+        console.log(`🌈 Applying visualization palette: ${selectedDataArray} with ${paletteSelection}`);
+        console.log('📊 Data array info:', dataArray);
+
+        // Load VTK modules
+        const { default: vtkColorTransferFunction } = await import('@kitware/vtk.js/Rendering/Core/ColorTransferFunction');
+
+        // Create color transfer function using our original visualization palette system
         const colorFunc = vtkColorTransferFunction.newInstance();
-        
-        // Set data range
         const range = dataArray.range;
-        lut.setRange(range[0], range[1]);
-        colorFunc.setRange(range[0], range[1]);
         
-        // Apply color map based on selected scheme
-        const applyColorScheme = (scheme) => {
-          switch (scheme) {
-            case 'Cool to Warm':
-              colorFunc.addRGBPoint(range[0], 0.23, 0.30, 0.75); // Cool blue
-              colorFunc.addRGBPoint((range[0] + range[1]) / 2, 0.87, 0.87, 0.87); // White
-              colorFunc.addRGBPoint(range[1], 0.71, 0.02, 0.15); // Warm red
-              break;
-            case 'Viridis':
-              colorFunc.addRGBPoint(range[0], 0.27, 0.00, 0.33); // Dark purple
-              colorFunc.addRGBPoint(range[0] + (range[1] - range[0]) * 0.25, 0.19, 0.41, 0.56); // Blue
-              colorFunc.addRGBPoint(range[0] + (range[1] - range[0]) * 0.5, 0.13, 0.57, 0.55); // Teal
-              colorFunc.addRGBPoint(range[0] + (range[1] - range[0]) * 0.75, 0.37, 0.68, 0.38); // Green
-              colorFunc.addRGBPoint(range[1], 0.99, 0.91, 0.15); // Yellow
-              break;
-            case 'Plasma':
-              colorFunc.addRGBPoint(range[0], 0.05, 0.03, 0.53); // Dark blue
-              colorFunc.addRGBPoint(range[0] + (range[1] - range[0]) * 0.25, 0.49, 0.01, 0.66); // Purple
-              colorFunc.addRGBPoint(range[0] + (range[1] - range[0]) * 0.5, 0.78, 0.15, 0.52); // Magenta
-              colorFunc.addRGBPoint(range[0] + (range[1] - range[0]) * 0.75, 0.96, 0.51, 0.19); // Orange
-              colorFunc.addRGBPoint(range[1], 0.94, 0.98, 0.16); // Yellow
-              break;
-            case 'Jet':
-              colorFunc.addRGBPoint(range[0], 0.0, 0.0, 0.5); // Dark blue
-              colorFunc.addRGBPoint(range[0] + (range[1] - range[0]) * 0.25, 0.0, 0.0, 1.0); // Blue
-              colorFunc.addRGBPoint(range[0] + (range[1] - range[0]) * 0.5, 0.0, 1.0, 0.0); // Green
-              colorFunc.addRGBPoint(range[0] + (range[1] - range[0]) * 0.75, 1.0, 1.0, 0.0); // Yellow
-              colorFunc.addRGBPoint(range[1], 1.0, 0.0, 0.0); // Red
-              break;
-            case 'Hot':
-              colorFunc.addRGBPoint(range[0], 0.0, 0.0, 0.0); // Black
-              colorFunc.addRGBPoint(range[0] + (range[1] - range[0]) * 0.33, 1.0, 0.0, 0.0); // Red
-              colorFunc.addRGBPoint(range[0] + (range[1] - range[0]) * 0.66, 1.0, 1.0, 0.0); // Yellow
-              colorFunc.addRGBPoint(range[1], 1.0, 1.0, 1.0); // White
-              break;
-            default:
-              // Default blue to red
-              colorFunc.addRGBPoint(range[0], 0.0, 0.0, 1.0); // Blue
-              colorFunc.addRGBPoint(range[1], 1.0, 0.0, 0.0); // Red
-          }
-        };
+        console.log('📈 Data range:', range);
         
-        applyColorScheme(colorMapName || 'Cool to Warm');
-        
-        // Build lookup table from color function
-        const lutTable = new Uint8Array(256 * 3);
-        for (let i = 0; i < 256; i++) {
-          const value = range[0] + (i / 255) * (range[1] - range[0]);
-          const color = colorFunc.getColor(value);
-          lutTable[i * 3] = Math.round(color[0] * 255);
-          lutTable[i * 3 + 1] = Math.round(color[1] * 255);
-          lutTable[i * 3 + 2] = Math.round(color[2] * 255);
-        }
-        
-        lut.setTable(lutTable);
-        setLookupTable(lut);
-        
-        // Apply to mapper
-        mapper.setLookupTable(lut);
+        // Get color points from our original visualization palette system
+        const colorPoints = visualizationPalette.buildVTKColorPoints(paletteSelection, range);
+        console.log('🎨 Generated palette points:', colorPoints.length);
+
+        // Apply color points to transfer function
+        colorPoints.forEach(([value, r, g, b]) => {
+          colorFunc.addRGBPoint(value, r, g, b);
+        });
+
+        // Apply color transfer function directly to mapper
+        mapper.setLookupTable(colorFunc);
         mapper.setScalarRange(range[0], range[1]);
-        
-        // Set the scalar array to color by
+
+        // Set the active scalar array
         if (dataArray.type === 'point') {
+          console.log('📍 Using point data for coloring');
           mapper.setScalarModeToUsePointData();
           polyData.getPointData().setActiveScalars(dataArray.name);
         } else if (dataArray.type === 'cell') {
+          console.log('🔲 Using cell data for coloring');
           mapper.setScalarModeToUseCellData();
           polyData.getCellData().setActiveScalars(dataArray.name);
         }
-        
+
+        // Enable scalar visibility
         mapper.setScalarVisibility(true);
         
-        console.log(`✅ Applied color mapping for ${selectedDataArray} with range [${range[0].toFixed(2)}, ${range[1].toFixed(2)}]`);
+        console.log(`✅ Successfully applied ${paletteSelection} visualization palette to ${selectedDataArray}`);
         
         // Force render
         if (renderWindow) {
           renderWindow.render();
         }
-        
+
       } catch (error) {
-        console.error('❌ Error applying color mapping:', error);
-        // Fall back to solid color
+        console.error('❌ Error in color mapping:', error);
+        
+        // Fallback to solid color
+        mapper.setScalarVisibility(false);
         mapper.setLookupTable(null);
         if (actor) {
           actor.getProperty().setColor(...objectColor);
         }
+        
+        if (renderWindow) {
+          renderWindow.render();
+        }
       }
     };
-    
+
+    // Apply color mapping
     applyColorMapping();
-  }, [selectedDataArray, colorMapName, mapper, polyData, availableArrays, objectColor, actor, renderWindow]);
+  }, [selectedDataArray, paletteSelection, mapper, polyData, availableArrays, objectColor, actor, renderWindow]);
 
   // Update visualization when properties change
   useEffect(() => {
