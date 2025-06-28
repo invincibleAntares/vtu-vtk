@@ -15,7 +15,8 @@ const VtkViewer = () => {
 
   // Simple properties with proper RGB values for VTK.js
   const [backgroundColor, setBackgroundColor] = useState([0.1, 0.1, 0.1]);
-  const [objectColor, setObjectColor] = useState([1.0, 0.0, 0.0]); // Red color
+  const [objectColor, setObjectColor] = useState([0.5, 0.5, 0.5])
+// Red color
   const [wireframeMode, setWireframeMode] = useState(false);
   const [opacity, setOpacity] = useState(1.0);
 
