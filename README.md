@@ -1,17 +1,25 @@
 # 🎯 VTK Visualization Dashboard
 
-A modern React-based 3D visualization application for VTK and VTU files using vtk.js.
+A modern React-based 3D visualization application for VTK and VTU files using vtk.js with advanced color mapping and data visualization capabilities.
 
 ## Features
 
-- 📊 **Basic VTK Viewer**: Simple VTK file rendering with camera controls and basic appearance settings
-- 🚀 **Advanced ParaView Dashboard**: Professional scientific visualization with:
-  - VTU file support with proper mesh connectivity
-  - Scientific color mapping (Viridis, Plasma, Cool-to-Warm, etc.)
-  - Data array visualization
-  - Slicing and clipping controls
-  - Point probing with Ctrl/Shift+click
-  - File upload support for .vtk and .vtu files
+- 📊 **3D VTK Visualization**: Complete VTK file rendering with interactive camera controls
+- 🌈 **Advanced Color Mapping**: 6 original visualization palettes:
+  - Heat Wave (Blue → Red)
+  - Prism Spectrum 
+  - Ocean Depths
+  - Terrain Heights
+  - Energy Field
+  - Natural Gradient
+- 🔬 **Scientific Data Visualization**: 
+  - Temperature, Pressure, and Velocity data arrays
+  - Real-time color mapping with per-vertex/per-cell coloring
+  - Synthetic data generation for demo purposes
+- ✂️ **3D Slicing & Clipping**: Interactive X, Y, Z axis controls for geometry manipulation
+- 🎯 **Point Probing**: Ctrl/Shift+click to inspect data values at specific points
+- 📁 **File Upload Support**: Drag & drop .vtk and .vtu files
+- 🎮 **Camera Controls**: Zoom, rotate, pan with preset view angles
 
 ## Getting Started
 
@@ -25,27 +33,28 @@ npm install
 npm run dev
 ```
 
-3. Open http://localhost:5173 in your browser
+3. Open http://localhost:5174 in your browser
 
 ## Usage
 
-- **Basic Viewer** (`/`): Simple VTK file rendering
-- **Advanced ParaView** (`/paraview`): Full featured scientific visualization
-
-Upload your .vtk or .vtu files using the file upload button in either viewer.
+- **Load VTK Files**: Use the file upload button or drag & drop your .vtk/.vtu files
+- **Color Mapping**: Select data arrays (Temperature/Pressure/Velocity) and visualization palettes
+- **3D Slicing**: Use the slicing controls to clip geometry along X, Y, Z axes
+- **Point Probing**: Hold Ctrl or Shift and click on the 3D object to inspect data values
+- **Camera Navigation**: Mouse controls for zoom, rotate, and pan
 
 ## Project Structure
 
 ```
 src/
 ├── components/           # React components
-│   ├── VtkViewer.jsx    # Basic VTK viewer
-│   ├── ParaViewWebDashboard.jsx  # Advanced dashboard with data visualization
-│   ├── VtkRenderer.jsx  # Core VTK rendering logic
-│   └── SlicingControls.jsx  # Geometry slicing controls
+│   ├── VtkViewer.jsx    # Main VTK viewer with color mapping UI
+│   ├── VtkRenderer.jsx  # Core VTK rendering with synthetic data generation
+│   └── SlicingControls.jsx  # 3D geometry slicing controls
 ├── utils/               # Utility functions
 │   ├── vtkUtils.js      # VTK file loading utilities
-│   └── vtuParser.js     # VTU file parser
+│   ├── vtuParser.js     # VTU file parser
+│   └── visualizationPalette.js  # Original color mapping system
 └── main.jsx            # Application entry point
 ```
 
@@ -54,4 +63,4 @@ src/
 - React 18 + Vite
 - vtk.js for 3D visualization
 - TailwindCSS for styling
-- React Router for navigation
+- Custom visualization palette system
